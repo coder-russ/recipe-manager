@@ -1,0 +1,37 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Playfair+Display:wght@600;700&display=swap');
+@import "tailwindcss";
+
+@theme {
+  --color-cream: #FFFAF5;
+  --color-surface: #FFFFFF;
+  --color-terracotta: #C2704E;
+  --color-terracotta-dark: #A85A3A;
+  --color-sage: #7A9A6D;
+  --color-sage-light: #E8F0E4;
+  --color-text-primary: #2D2419;
+  --color-text-secondary: #6B5D4F;
+  --color-border: #E8DDD3;
+  --color-warm-gray: #F5EDE6;
+  --font-sans: 'Inter', sans-serif;
+  --font-serif: 'Playfair Display', serif;
+}
+
+body {
+  margin: 0;
+  background-color: var(--color-cream);
+  color: var(--color-text-primary);
+  font-family: var(--font-sans);
+}
+
+#root {
+  min-height: 100vh;
+}
+
+@keyframes pulse-warm {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.5; }
+}
+
+.animate-pulse-warm {
+  animation: pulse-warm 1.5s ease-in-out infinite;
+}

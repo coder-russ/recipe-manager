@@ -8,3 +8,5 @@ tests/
 *.md
 .env
 .venv
+frontend/node_modules
+frontend/dist
