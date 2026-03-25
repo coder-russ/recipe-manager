@@ -1,4 +1,4 @@
-"""Recipe API endpoints: CRUD, import, search."""
+"""Recipe API endpoints: CRUD, import, search, tags, bulk operations."""
 
 import json
 import logging
@@ -9,9 +9,18 @@ from sqlalchemy.orm import Session
 
 from app.database import get_db
 from app.models import Recipe
-from app.schemas import ImportRequest, RecipeListResponse, RecipeResponse, RecipeUpdate
+from app.schemas import (
+    BulkTagRequest,
+    BulkTagResponse,
+    ImportRequest,
+    RecipeListResponse,
+    RecipeResponse,
+    RecipeUpdate,
+    TagListResponse,
+)
 from app.services.extractor import ExtractionError, FetchError, extract_recipe
 from app.services.image import delete_image, download_image
+from app.utils import parse_cook_time_minutes
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/api")
@@ -20,6 +29,24 @@ router = APIRouter(prefix="/api")
 @router.get("/health")
 async def health_check():
     return {"status": "ok"}
+
+
+@router.get("/tags", response_model=TagListResponse)
+async def list_tags(db: Session = Depends(get_db)):
+    """Return all unique tags with usage counts."""
+    recipes = db.query(Recipe).all()
+    tag_counts: dict[str, int] = {}
+    for recipe in recipes:
+        if recipe.tags:
+            for tag in recipe.tags:
+                tag_counts[tag] = tag_counts.get(tag, 0) + 1
+
+    tags = sorted(
+        [{"name": name, "count": count} for name, count in tag_counts.items()],
+        key=lambda t: t["count"],
+        reverse=True,
+    )
+    return TagListResponse(tags=tags)
 
 
 @router.post("/recipes/import", response_model=RecipeResponse, status_code=201)
@@ -37,7 +64,6 @@ async def import_recipe(req: ImportRequest, db: Session = Depends(get_db)):
     except ExtractionError as e:
         raise HTTPException(status_code=422, detail=str(e))
 
-    # Create recipe record
     recipe = Recipe(
         title=data["title"],
         ingredients=data["ingredients"],
@@ -56,7 +82,6 @@ async def import_recipe(req: ImportRequest, db: Session = Depends(get_db)):
     db.commit()
     db.refresh(recipe)
 
-    # Download image after we have the recipe ID
     image_url = data.get("image_url")
     if image_url:
         image_path = await download_image(image_url, recipe.id)
@@ -68,16 +93,47 @@ async def import_recipe(req: ImportRequest, db: Session = Depends(get_db)):
     return recipe
 
 
+@router.post("/recipes/bulk/tags", response_model=BulkTagResponse)
+async def bulk_update_tags(req: BulkTagRequest, db: Session = Depends(get_db)):
+    """Add or remove tags on multiple recipes at once."""
+    recipes = db.query(Recipe).filter(Recipe.id.in_(req.recipe_ids)).all()
+    updated = 0
+
+    for recipe in recipes:
+        current_tags = list(recipe.tags) if recipe.tags else []
+        changed = False
+
+        for tag in req.add_tags:
+            if tag not in current_tags:
+                current_tags.append(tag)
+                changed = True
+
+        for tag in req.remove_tags:
+            if tag in current_tags:
+                current_tags.remove(tag)
+                changed = True
+
+        if changed:
+            recipe.tags = current_tags
+            updated += 1
+
+    db.commit()
+    return BulkTagResponse(updated=updated)
+
+
 @router.get("/recipes", response_model=RecipeListResponse)
 async def list_recipes(
     search: str | None = Query(None),
     tag: str | None = Query(None),
+    tags: str | None = Query(None),
+    min_rating: int | None = Query(None, ge=1, le=5),
+    max_cook_time: int | None = Query(None, ge=1),
     sort: str = Query("created_at"),
     limit: int = Query(20, ge=1, le=100),
     offset: int = Query(0, ge=0),
     db: Session = Depends(get_db),
 ):
-    """List recipes with optional search, tag filter, sort, and pagination."""
+    """List recipes with search, tag filter, rating filter, cook time filter, sort, and pagination."""
     query = db.query(Recipe)
 
     # Full-text search via FTS5
@@ -91,12 +147,45 @@ async def list_recipes(
             return RecipeListResponse(recipes=[], total=0)
         query = query.filter(Recipe.id.in_(matching_ids))
 
-    # Tag filter
+    # Single tag filter (backwards compatible)
     if tag:
-        # SQLite JSON: filter recipes where tags array contains the tag
         query = query.filter(
             Recipe.tags.op("LIKE")(f'%"{tag}"%')
         )
+
+    # Multi-tag filter (AND logic)
+    if tags:
+        tag_list = [t.strip() for t in tags.split(",") if t.strip()]
+        for t in tag_list:
+            query = query.filter(
+                Recipe.tags.op("LIKE")(f'%"{t}"%')
+            )
+
+    # Rating filter
+    if min_rating is not None:
+        query = query.filter(Recipe.rating.isnot(None), Recipe.rating >= min_rating)
+
+    # Cook time filter — need to do in-memory since cook_time is a string
+    if max_cook_time is not None:
+        all_matching = query.all()
+        filtered_ids = []
+        for r in all_matching:
+            minutes = parse_cook_time_minutes(r.cook_time)
+            if minutes is not None and minutes <= max_cook_time:
+                filtered_ids.append(r.id)
+        if not filtered_ids:
+            return RecipeListResponse(recipes=[], total=0)
+        query = db.query(Recipe).filter(Recipe.id.in_(filtered_ids))
+        # Re-apply other filters that may have been on the query
+        if search:
+            query = query.filter(Recipe.id.in_(matching_ids))
+        if tag:
+            query = query.filter(Recipe.tags.op("LIKE")(f'%"{tag}"%'))
+        if tags:
+            for t in tag_list:
+                query = query.filter(Recipe.tags.op("LIKE")(f'%"{t}"%'))
+        if min_rating is not None:
+            query = query.filter(Recipe.rating.isnot(None), Recipe.rating >= min_rating)
 
     # Get total count before pagination
     total = query.count()

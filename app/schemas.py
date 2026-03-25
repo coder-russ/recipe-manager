@@ -46,3 +46,22 @@ class RecipeResponse(BaseModel):
 class RecipeListResponse(BaseModel):
     recipes: list[RecipeResponse]
     total: int
+
+
+class TagCount(BaseModel):
+    name: str
+    count: int
+
+
+class TagListResponse(BaseModel):
+    tags: list[TagCount]
+
+
+class BulkTagRequest(BaseModel):
+    recipe_ids: list[int]
+    add_tags: list[str] = []
+    remove_tags: list[str] = []
+
+
+class BulkTagResponse(BaseModel):
+    updated: int
