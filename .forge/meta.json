@@ -1,0 +1,13 @@
+{
+  "name": "recipe-manager",
+  "date": "2026-03-25",
+  "type": "full-stack-app",
+  "phases": 4,
+  "scores": {
+    "functionality": 9,
+    "product_depth": 9,
+    "extraction_reliability": 8,
+    "design_quality": 8,
+    "code_quality": 8
+  }
+}
