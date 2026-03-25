@@ -1,0 +1,16 @@
+services:
+  backend:
+    build: .
+    ports:
+      - "8000:8000"
+    volumes:
+      - recipe-data:/app/data
+      - recipe-images:/app/images
+    environment:
+      - DATA_DIR=/app/data
+      - IMAGES_DIR=/app/images
+    restart: unless-stopped
+
+volumes:
+  recipe-data:
+  recipe-images:
