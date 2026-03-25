@@ -1,4 +1,4 @@
-import type { Recipe, RecipeListResponse } from './types';
+import type { Recipe, RecipeListResponse, TagListResponse } from './types';
 
 const BASE = '/api';
 
@@ -18,12 +18,18 @@ async function request<T>(url: string, opts?: RequestInit): Promise<T> {
 export async function fetchRecipes(params?: {
   search?: string;
   tag?: string;
+  tags?: string[];
   sort?: string;
+  min_rating?: number;
+  max_cook_time?: number;
 }): Promise<RecipeListResponse> {
   const qs = new URLSearchParams();
   if (params?.search) qs.set('search', params.search);
   if (params?.tag) qs.set('tag', params.tag);
+  if (params?.tags && params.tags.length > 0) qs.set('tags', params.tags.join(','));
   if (params?.sort) qs.set('sort', params.sort);
+  if (params?.min_rating) qs.set('min_rating', String(params.min_rating));
+  if (params?.max_cook_time) qs.set('max_cook_time', String(params.max_cook_time));
   const query = qs.toString();
   return request<RecipeListResponse>(`${BASE}/recipes${query ? `?${query}` : ''}`);
 }
@@ -51,4 +57,23 @@ export async function updateRecipe(
 
 export async function deleteRecipe(id: number): Promise<void> {
   return request<void>(`${BASE}/recipes/${id}`, { method: 'DELETE' });
+}
+
+export async function fetchTags(): Promise<TagListResponse> {
+  return request<TagListResponse>(`${BASE}/tags`);
+}
+
+export async function bulkUpdateTags(
+  recipeIds: number[],
+  addTags: string[],
+  removeTags: string[]
+): Promise<{ updated: number }> {
+  return request<{ updated: number }>(`${BASE}/recipes/bulk/tags`, {
+    method: 'POST',
+    body: JSON.stringify({
+      recipe_ids: recipeIds,
+      add_tags: addTags,
+      remove_tags: removeTags,
+    }),
+  });
 }

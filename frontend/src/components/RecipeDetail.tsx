@@ -1,20 +1,35 @@
 import { useEffect, useState } from 'react';
-import type { Recipe } from '../types';
+import type { Recipe, TagCount } from '../types';
 import SkeletonDetail from './SkeletonDetail';
+import TagInput from './TagInput';
 
 interface RecipeDetailProps {
   recipe: Recipe | null;
   loading: boolean;
+  allTags: TagCount[];
   onBack: () => void;
+  onTagClick: (tag: string) => void;
+  onAddTag: (recipeId: number, tag: string) => void;
+  onRemoveTag: (recipeId: number, tag: string) => void;
 }
 
-export default function RecipeDetail({ recipe, loading, onBack }: RecipeDetailProps) {
+export default function RecipeDetail({
+  recipe,
+  loading,
+  allTags,
+  onBack,
+  onTagClick,
+  onAddTag,
+  onRemoveTag,
+}: RecipeDetailProps) {
   const [checkedIngredients, setCheckedIngredients] = useState<Set<number>>(new Set());
   const [highlightedStep, setHighlightedStep] = useState<number | null>(null);
+  const [showTagInput, setShowTagInput] = useState(false);
 
   useEffect(() => {
     setCheckedIngredients(new Set());
     setHighlightedStep(null);
+    setShowTagInput(false);
   }, [recipe?.id]);
 
   if (loading) return <SkeletonDetail />;
@@ -109,19 +124,50 @@ export default function RecipeDetail({ recipe, loading, onBack }: RecipeDetailPr
         </div>
       )}
 
-      {/* Tags */}
-      {recipe.tags.length > 0 && (
-        <div className="flex flex-wrap gap-2 mb-6">
-          {recipe.tags.map((tag) => (
-            <span
-              key={tag}
-              className="bg-sage-light text-sage rounded-full px-3 py-1 text-sm font-medium"
+      {/* Tags — interactive */}
+      <div className="flex flex-wrap items-center gap-2 mb-6">
+        {recipe.tags.map((tag) => (
+          <span
+            key={tag}
+            className="inline-flex items-center gap-1 bg-sage-light text-sage rounded-full pl-3 pr-1 py-1 text-sm font-medium group"
+          >
+            <button
+              onClick={() => onTagClick(tag)}
+              className="hover:underline cursor-pointer"
             >
               {tag}
-            </span>
-          ))}
-        </div>
-      )}
+            </button>
+            <button
+              onClick={() => onRemoveTag(recipe.id, tag)}
+              className="ml-0.5 p-0.5 rounded-full hover:bg-sage/20 cursor-pointer text-sage/60 hover:text-sage transition-colors"
+              title={`Remove "${tag}"`}
+            >
+              <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
+                <path d="M18 6L6 18M6 6l12 12" />
+              </svg>
+            </button>
+          </span>
+        ))}
+        {showTagInput ? (
+          <div className="w-40">
+            <TagInput
+              allTags={allTags.filter((t) => !recipe.tags.includes(t.name))}
+              onAdd={(tag) => {
+                onAddTag(recipe.id, tag);
+                setShowTagInput(false);
+              }}
+              placeholder="Tag name..."
+            />
+          </div>
+        ) : (
+          <button
+            onClick={() => setShowTagInput(true)}
+            className="inline-flex items-center gap-1 text-xs text-terracotta hover:text-terracotta-dark font-medium cursor-pointer px-2 py-1 rounded-full border border-dashed border-terracotta/40 hover:border-terracotta transition-colors"
+          >
+            + Add tag
+          </button>
+        )}
+      </div>
 
       {/* Source link */}
       {recipe.source_url && (

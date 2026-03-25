@@ -3,18 +3,50 @@ import type { Recipe } from '../types';
 interface RecipeCardProps {
   recipe: Recipe;
   onClick: () => void;
+  selectMode: boolean;
+  selected: boolean;
+  onToggleSelect: () => void;
 }
 
-export default function RecipeCard({ recipe, onClick }: RecipeCardProps) {
+export default function RecipeCard({ recipe, onClick, selectMode, selected, onToggleSelect }: RecipeCardProps) {
   const maxTags = 3;
   const visibleTags = recipe.tags.slice(0, maxTags);
   const extraTags = recipe.tags.length - maxTags;
 
+  const handleClick = () => {
+    if (selectMode) {
+      onToggleSelect();
+    } else {
+      onClick();
+    }
+  };
+
   return (
     <button
-      onClick={onClick}
-      className="bg-surface rounded-xl shadow-sm hover:shadow-md transition-shadow duration-200 overflow-hidden text-left w-full cursor-pointer group"
+      onClick={handleClick}
+      className={`bg-surface rounded-xl shadow-sm hover:shadow-md transition-all duration-200 overflow-hidden text-left w-full cursor-pointer group relative ${
+        selected ? 'ring-2 ring-terracotta' : ''
+      }`}
     >
+      {/* Selection checkbox */}
+      {selectMode && (
+        <div className="absolute top-3 left-3 z-10">
+          <div
+            className={`w-6 h-6 rounded-md border-2 flex items-center justify-center transition-colors ${
+              selected
+                ? 'bg-terracotta border-terracotta'
+                : 'bg-white/80 border-white/80 backdrop-blur'
+            }`}
+          >
+            {selected && (
+              <svg className="w-4 h-4 text-white" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round">
+                <path d="M20 6L9 17l-5-5" />
+              </svg>
+            )}
+          </div>
+        </div>
+      )}
+
       <div className="aspect-[4/3] overflow-hidden bg-warm-gray">
         {recipe.image_path ? (
           <img

@@ -26,6 +26,23 @@ export interface ImportRequest {
   url: string;
 }
 
+export interface TagCount {
+  name: string;
+  count: number;
+}
+
+export interface TagListResponse {
+  tags: TagCount[];
+}
+
+export interface Filters {
+  search: string;
+  tags: string[];
+  minRating: number | null;
+  maxCookTime: number | null;
+  sort: string;
+}
+
 export type View =
   | { type: 'grid' }
   | { type: 'detail'; recipeId: number };
