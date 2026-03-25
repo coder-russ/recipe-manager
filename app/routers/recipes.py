@@ -13,6 +13,7 @@ from app.schemas import (
     BulkTagRequest,
     BulkTagResponse,
     ImportRequest,
+    RecipeCreate,
     RecipeListResponse,
     RecipeResponse,
     RecipeUpdate,
@@ -90,6 +91,36 @@ async def import_recipe(req: ImportRequest, db: Session = Depends(get_db)):
             db.commit()
             db.refresh(recipe)
 
+    return recipe
+
+
+@router.post("/recipes", response_model=RecipeResponse, status_code=201)
+async def create_recipe(req: RecipeCreate, db: Session = Depends(get_db)):
+    """Create a recipe manually (no URL import)."""
+    if not req.title.strip():
+        raise HTTPException(status_code=422, detail="Title is required")
+    if not req.ingredients:
+        raise HTTPException(status_code=422, detail="At least one ingredient is required")
+    if not req.steps:
+        raise HTTPException(status_code=422, detail="At least one step is required")
+
+    recipe = Recipe(
+        title=req.title.strip(),
+        ingredients=[i for i in req.ingredients if i.strip()],
+        steps=[s for s in req.steps if s.strip()],
+        cook_time=req.cook_time,
+        prep_time=req.prep_time,
+        total_time=req.total_time,
+        servings=req.servings,
+        recipe_yield=req.recipe_yield,
+        source_url=req.source_url,
+        tags=req.tags,
+        notes=req.notes,
+        rating=req.rating,
+    )
+    db.add(recipe)
+    db.commit()
+    db.refresh(recipe)
     return recipe
 
 

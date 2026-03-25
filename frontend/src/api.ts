@@ -63,6 +63,26 @@ export async function fetchTags(): Promise<TagListResponse> {
   return request<TagListResponse>(`${BASE}/tags`);
 }
 
+export async function createRecipe(data: {
+  title: string;
+  ingredients: string[];
+  steps: string[];
+  cook_time?: string | null;
+  prep_time?: string | null;
+  total_time?: string | null;
+  servings?: string | null;
+  recipe_yield?: string | null;
+  source_url?: string | null;
+  tags?: string[];
+  notes?: string | null;
+  rating?: number | null;
+}): Promise<Recipe> {
+  return request<Recipe>(`${BASE}/recipes`, {
+    method: 'POST',
+    body: JSON.stringify(data),
+  });
+}
+
 export async function bulkUpdateTags(
   recipeIds: number[],
   addTags: string[],

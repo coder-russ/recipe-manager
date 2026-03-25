@@ -8,6 +8,21 @@ class ImportRequest(BaseModel):
     url: HttpUrl
 
 
+class RecipeCreate(BaseModel):
+    title: str
+    ingredients: list[str]
+    steps: list[str]
+    cook_time: Optional[str] = None
+    prep_time: Optional[str] = None
+    total_time: Optional[str] = None
+    servings: Optional[str] = None
+    recipe_yield: Optional[str] = None
+    source_url: Optional[str] = None
+    tags: list[str] = []
+    notes: Optional[str] = None
+    rating: Optional[int] = None
+
+
 class RecipeUpdate(BaseModel):
     title: Optional[str] = None
     ingredients: Optional[list[str]] = None

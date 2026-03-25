@@ -40,8 +40,9 @@ export default function SearchBar({ value, onChange, resultCount }: SearchBarPro
           type="text"
           value={local}
           onChange={(e) => handleChange(e.target.value)}
-          placeholder="Search recipes..."
-          className="w-full pl-10 pr-10 py-2.5 rounded-lg border border-border bg-surface text-text-primary placeholder-text-secondary/50 focus:outline-none focus:ring-2 focus:ring-terracotta/40 focus:border-terracotta text-sm"
+          placeholder="Search recipes... ( / )"
+          data-search-input
+          className="w-full pl-10 pr-10 py-2.5 rounded-lg border border-border bg-surface text-text-primary placeholder-text-secondary/50 focus:outline-none focus:ring-2 focus:ring-terracotta/40 focus:border-terracotta text-sm min-h-[44px]"
         />
         {local && (
           <button

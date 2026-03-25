@@ -2,6 +2,8 @@ import { useEffect, useState } from 'react';
 import type { Recipe, TagCount } from '../types';
 import SkeletonDetail from './SkeletonDetail';
 import TagInput from './TagInput';
+import ServingsScaler from './ServingsScaler';
+import { scaleIngredient } from '../utils/scaling';
 
 interface RecipeDetailProps {
   recipe: Recipe | null;
@@ -11,6 +13,8 @@ interface RecipeDetailProps {
   onTagClick: (tag: string) => void;
   onAddTag: (recipeId: number, tag: string) => void;
   onRemoveTag: (recipeId: number, tag: string) => void;
+  onEdit: (recipe: Recipe) => void;
+  onDelete: (recipe: Recipe) => void;
 }
 
 export default function RecipeDetail({
@@ -21,15 +25,19 @@ export default function RecipeDetail({
   onTagClick,
   onAddTag,
   onRemoveTag,
+  onEdit,
+  onDelete,
 }: RecipeDetailProps) {
   const [checkedIngredients, setCheckedIngredients] = useState<Set<number>>(new Set());
   const [highlightedStep, setHighlightedStep] = useState<number | null>(null);
   const [showTagInput, setShowTagInput] = useState(false);
+  const [scaleRatio, setScaleRatio] = useState(1);
 
   useEffect(() => {
     setCheckedIngredients(new Set());
     setHighlightedStep(null);
     setShowTagInput(false);
+    setScaleRatio(1);
   }, [recipe?.id]);
 
   if (loading) return <SkeletonDetail />;
@@ -61,16 +69,41 @@ export default function RecipeDetail({
 
   return (
     <div className="max-w-3xl mx-auto px-4 md:px-8 py-6 pb-16">
-      {/* Back button */}
-      <button
-        onClick={onBack}
-        className="inline-flex items-center gap-1.5 text-text-secondary hover:text-terracotta transition-colors mb-6 cursor-pointer font-medium"
-      >
-        <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
-          <path d="M15 18l-6-6 6-6" />
-        </svg>
-        Back to recipes
-      </button>
+      {/* Top bar: back + actions */}
+      <div className="flex items-center justify-between mb-6">
+        <button
+          onClick={onBack}
+          className="inline-flex items-center gap-1.5 text-text-secondary hover:text-terracotta transition-colors cursor-pointer font-medium min-h-[44px]"
+        >
+          <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+            <path d="M15 18l-6-6 6-6" />
+          </svg>
+          Back to recipes
+        </button>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => onEdit(recipe)}
+            className="inline-flex items-center gap-1.5 text-text-secondary hover:text-terracotta transition-colors cursor-pointer font-medium px-3 py-2 rounded-lg hover:bg-warm-gray min-h-[44px]"
+            title="Edit recipe"
+          >
+            <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+              <path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7" />
+              <path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z" />
+            </svg>
+            <span className="hidden sm:inline">Edit</span>
+          </button>
+          <button
+            onClick={() => onDelete(recipe)}
+            className="inline-flex items-center gap-1.5 text-text-secondary hover:text-red-600 transition-colors cursor-pointer font-medium px-3 py-2 rounded-lg hover:bg-red-50 min-h-[44px]"
+            title="Delete recipe"
+          >
+            <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+              <path d="M3 6h18M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2" />
+            </svg>
+            <span className="hidden sm:inline">Delete</span>
+          </button>
+        </div>
+      </div>
 
       {/* Hero image */}
       {recipe.image_path && (
@@ -124,27 +157,20 @@ export default function RecipeDetail({
         </div>
       )}
 
-      {/* Tags — interactive */}
+      {/* Tags */}
       <div className="flex flex-wrap items-center gap-2 mb-6">
         {recipe.tags.map((tag) => (
           <span
             key={tag}
             className="inline-flex items-center gap-1 bg-sage-light text-sage rounded-full pl-3 pr-1 py-1 text-sm font-medium group"
           >
-            <button
-              onClick={() => onTagClick(tag)}
-              className="hover:underline cursor-pointer"
-            >
-              {tag}
-            </button>
+            <button onClick={() => onTagClick(tag)} className="hover:underline cursor-pointer">{tag}</button>
             <button
               onClick={() => onRemoveTag(recipe.id, tag)}
               className="ml-0.5 p-0.5 rounded-full hover:bg-sage/20 cursor-pointer text-sage/60 hover:text-sage transition-colors"
               title={`Remove "${tag}"`}
             >
-              <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
-                <path d="M18 6L6 18M6 6l12 12" />
-              </svg>
+              <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><path d="M18 6L6 18M6 6l12 12" /></svg>
             </button>
           </span>
         ))}
@@ -152,17 +178,14 @@ export default function RecipeDetail({
           <div className="w-40">
             <TagInput
               allTags={allTags.filter((t) => !recipe.tags.includes(t.name))}
-              onAdd={(tag) => {
-                onAddTag(recipe.id, tag);
-                setShowTagInput(false);
-              }}
+              onAdd={(tag) => { onAddTag(recipe.id, tag); setShowTagInput(false); }}
               placeholder="Tag name..."
             />
           </div>
         ) : (
           <button
             onClick={() => setShowTagInput(true)}
-            className="inline-flex items-center gap-1 text-xs text-terracotta hover:text-terracotta-dark font-medium cursor-pointer px-2 py-1 rounded-full border border-dashed border-terracotta/40 hover:border-terracotta transition-colors"
+            className="inline-flex items-center gap-1 text-xs text-terracotta hover:text-terracotta-dark font-medium cursor-pointer px-2 py-1 rounded-full border border-dashed border-terracotta/40 hover:border-terracotta transition-colors min-h-[44px]"
           >
             + Add tag
           </button>
@@ -175,7 +198,7 @@ export default function RecipeDetail({
           href={recipe.source_url}
           target="_blank"
           rel="noopener noreferrer"
-          className="inline-flex items-center gap-1 text-terracotta hover:text-terracotta-dark text-sm font-medium mb-8 transition-colors"
+          className="inline-flex items-center gap-1 text-terracotta hover:text-terracotta-dark text-sm font-medium mb-8 transition-colors min-h-[44px]"
         >
           View original recipe
           <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
@@ -184,33 +207,37 @@ export default function RecipeDetail({
         </a>
       )}
 
-      {/* Ingredients */}
+      {/* Ingredients with scaler */}
       <section className="mb-10">
-        <h2 className="font-serif text-xl font-bold text-text-primary mb-4 border-b border-border pb-2">
-          Ingredients
-        </h2>
+        <div className="flex flex-wrap items-center justify-between gap-3 mb-4 border-b border-border pb-2">
+          <h2 className="font-serif text-xl font-bold text-text-primary">Ingredients</h2>
+          <ServingsScaler servings={recipe.servings} onScale={setScaleRatio} />
+        </div>
         <ul className="space-y-2">
-          {recipe.ingredients.map((ingredient, idx) => (
-            <li key={idx}>
-              <label className="flex items-start gap-3 cursor-pointer group py-1">
-                <input
-                  type="checkbox"
-                  checked={checkedIngredients.has(idx)}
-                  onChange={() => toggleIngredient(idx)}
-                  className="mt-1 w-5 h-5 rounded border-border text-terracotta focus:ring-terracotta shrink-0 accent-terracotta"
-                />
-                <span
-                  className={`text-lg leading-relaxed transition-all duration-150 ${
-                    checkedIngredients.has(idx)
-                      ? 'line-through text-text-secondary/50'
-                      : 'text-text-primary'
-                  }`}
-                >
-                  {ingredient}
-                </span>
-              </label>
-            </li>
-          ))}
+          {recipe.ingredients.map((ingredient, idx) => {
+            const scaled = scaleRatio !== 1 ? scaleIngredient(ingredient, scaleRatio) : ingredient;
+            return (
+              <li key={idx}>
+                <label className="flex items-start gap-3 cursor-pointer group py-1 min-h-[44px]">
+                  <input
+                    type="checkbox"
+                    checked={checkedIngredients.has(idx)}
+                    onChange={() => toggleIngredient(idx)}
+                    className="mt-1 w-5 h-5 rounded border-border text-terracotta focus:ring-terracotta shrink-0 accent-terracotta"
+                  />
+                  <span
+                    className={`text-lg leading-relaxed transition-all duration-150 ${
+                      checkedIngredients.has(idx)
+                        ? 'line-through text-text-secondary/50'
+                        : 'text-text-primary'
+                    }`}
+                  >
+                    {scaled}
+                  </span>
+                </label>
+              </li>
+            );
+          })}
         </ul>
       </section>
 
@@ -224,7 +251,7 @@ export default function RecipeDetail({
             <li
               key={idx}
               onClick={() => toggleStep(idx)}
-              className={`flex gap-4 p-4 rounded-lg cursor-pointer transition-colors duration-150 ${
+              className={`flex gap-4 p-4 rounded-lg cursor-pointer transition-colors duration-150 min-h-[44px] ${
                 highlightedStep === idx
                   ? 'bg-terracotta/10 border border-terracotta/20'
                   : 'hover:bg-warm-gray border border-transparent'
